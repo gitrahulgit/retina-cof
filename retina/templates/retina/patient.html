@@ -1,0 +1,262 @@
+{% extends "users/base.html" %}
+{%block content%}
+    <div>
+
+        <h1>Patient ID: {{ patient_img.patient_id }}</h1>
+        <h1>Patient Eye: {{patient_img.img_type}}</h1>
+        <h4>Processed: {{ processed }}/2917</h4>
+
+        <canvas id="myCanvas" width="750" height="750"  style="border:3px solid #000;"></canvas>
+
+        {% csrf_token %}
+        <form id="annotationForm">
+            
+            <div class = "form group" id="maAnnotations" style="display:block;">
+
+                <h2 id="currentDisease">Current Lesion: MA</h2>
+                <h4>Select Radius for Annotation:</h4>
+                <input type="radio" id="rad1" name="diseaseAnnotation" value="3" checked>
+                <label for="rad1">3px</label>
+                <input type="radio" id="rad2" name="diseaseAnnotation" value="5">
+                <label for="rad2">5px</label>
+                <input type="radio" id="rad3" name="diseaseAnnotation" value="7">
+                <label for="rad3">7px</label>
+            </div>
+            <br>
+            
+            <div id="otherAnnotations" style="display:none;">
+                <h2>Annotations for: <span id="otherDiseaseName"></span></h2>
+                <p>Slide to change annotation radius:</p>
+                <input type="range" min="1" max="100" value="50" id="radiusRange">
+            </div>
+            <!-- Comment Box for HME -->
+            <div id="commentBox" style="display:none;" class="mb-3">
+                <h3>Comments:</h3>
+                <textarea id="commentTextbox" class="mb-7" rows="4" placeholder="Enter comments here...">{{ comment.comment }}</textarea>
+            </div>
+            
+            <button type="button" class="btn btn-primary" id="nextDiseaseBtn" onclick="nextDisease();">Go to next disease</button>
+            <input type="button" class="btn btn-success" value="Save to DataBase" onclick="submitForm();">
+            <input type="button" class="btn btn-warning" value="Undo" onclick="undoAnnotation();">
+            <input type="button" class="btn btn-danger" value="Reset" onclick="resetAnnotations();">
+        </form>
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-core.min.js"></script>
+
+<script>
+    paper.install(window);
+
+    var diseases = ['MA', 'NVE', 'HAM', 'HVE']; // List of diseases
+    var currentIndex = 0; // Current index in the diseases array
+    var annotationHistory = [];
+    var dbAnnotations = {"MA": [], "NVE": [], "HAM": [], "HVE": []};
+
+    function updateDisplay() {
+        var currentDisease = diseases[currentIndex];
+        document.getElementById('currentDisease').innerText = 'Current Lesion: ' + currentDisease;
+    
+        if (currentDisease === 'MA') {
+            document.getElementById('maAnnotations').style.display = 'block';
+            document.getElementById('otherAnnotations').style.display = 'none';
+        } else {
+            document.getElementById('maAnnotations').style.display = 'none';
+            document.getElementById('otherAnnotations').style.display = 'block';
+            document.getElementById('otherDiseaseName').innerText = currentDisease; // Update the disease name dynamically
+        }
+
+        document.getElementById('commentBox').style.display = currentDisease === 'HVE' ? 'block' : 'none';
+    }
+
+    function nextDisease() {
+
+        submitForm(); // Submit the current form before moving on to the next disease
+
+        if (currentIndex===3) {
+            window.location.href = "{% url 'nextpat' patient_id=patient_img.patient_id.pat_id %}"; // Redirect to the home page if we're done with all diseases
+            
+        }
+        currentIndex = (currentIndex + 1) % diseases.length; // Cycle through diseases
+        
+        
+        updateDisplay(); // Update form content based on current disease
+        
+        annotationHistory.length = 0; // Clear the annotationHistory array
+        project.activeLayer.removeChildren(); // Clear the canvas
+        for (let i = 0; i < dbAnnotations[diseases[currentIndex]].length; i++) {
+            let ann = dbAnnotations[diseases[currentIndex]][i];
+            console.log(ann);
+            dbCircle = drawCircle(new Point(ann.x, ann.y), ann.radius);
+            project.activeLayer.addChild(dbCircle);
+        }
+    }
+
+    {% comment %} function putDot(position) {
+        // This function now assumes it's only called for "MA", which is currentIndex === 0
+        var circle = new Path.Circle({
+            center: position,
+            radius: selectedRadius,
+            fillColor: 'black', // Feel free to change the color
+        });
+    } {% endcomment %}
+
+    {% comment %} if (currentIndex === 0) { // Only for "MA"
+        tool.onMouseDown = function(event) {
+            putDot(event.point);
+        }
+    } {% endcomment %}
+    
+    // Update the radius based on radio button selection
+    //var radios = document.getElementsByName('diseaseAnnotation');
+    {% comment %} radios.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            if (radio.checked) {
+                selectedRadius = parseInt(radio.value, 10);
+            }
+        });
+    }); {% endcomment %}
+
+     // Initialize the selected radius from the currently checked radio
+     //updateSelectedRadius(); // Assumes this function is defined to update selectedRadius
+
+    function drawCircle(position, radius) {
+        var path = new Path.Circle({
+            center: position,
+            radius: radius,
+            strokeColor: 'white',
+            fillColor: '#ffffff69',
+            strokeWidth: 0.5,
+        });
+        return path;
+    }
+
+    function undoAnnotation() {
+        if (annotationHistory.length > 0) {
+            var lastAnnotation = annotationHistory.pop();
+            lastAnnotation.remove();
+        }
+    }
+
+    function resetAnnotations() {
+        while (annotationHistory.length > 0) {
+            var annotation = annotationHistory.pop();
+            project.activeLayer.removeChildren(dbAnnotations[diseases[currentIndex]].length);
+            annotationHistory.length=0;
+        }
+    }
+
+    window.onload =function(){
+        paper.setup('myCanvas');
+
+        var canvas = document.getElementById('myCanvas');
+        var context = canvas.getContext('webgl');
+
+        var raster = new paper.Raster({
+            source: '{{ patient_img.img_link }}&sz=w750',
+            position: view.center
+        });
+        var secondLayer = new paper.Layer();
+        secondLayer.activate();
+
+        var tool = new Tool();
+
+        let selectedCircle = null;
+        let dbCircle = null;
+
+        {% for key, items in annotations.items %}
+            {% for ann in items %}
+                dbAnnotations["{{ key }}"].push({x: {{ ann.x }}, y: {{ ann.y }}, radius: {{ ann.radius }}});           
+            {% endfor %}
+        {% endfor %}
+
+        updateDisplay();
+        paper.view.draw();
+        for (let i = 0; i < dbAnnotations[diseases[currentIndex]].length; i++) {
+            let ann = dbAnnotations[diseases[currentIndex]][i];
+            console.log(ann);
+            dbCircle = drawCircle(new Point(ann.x, ann.y), ann.radius);
+            secondLayer.addChild(dbCircle);
+        }
+
+        document.getElementById('radiusRange').oninput = function() {
+            if (selectedCircle) {
+                let radius = parseInt(this.value, 10);
+                selectedCircle.scale(radius / selectedCircle.bounds.width*2);
+            }
+        };
+    
+        document.getElementsByName('diseaseAnnotation').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (radio.checked) {
+                    let radius = parseInt(radio.value, 10);
+                    if (selectedCircle) {
+                        selectedCircle.scale(radius / selectedCircle.bounds.width*2);
+                    }
+                }
+            });
+        });
+
+        tool.onMouseDown = function(event) {
+            let hitResult = project.activeLayer.hitTest(event.point, { fill: true, stroke: true, segments: true, tolerance: 1, bounds: true });
+            if (hitResult && hitResult.item) {
+                console.log(hitResult.item);
+                selectedCircle = hitResult.item;
+                if (currentIndex !== 0) {
+                    document.getElementById('radiusRange').value = selectedCircle.bounds.width / 2;
+                } else {
+                    document.getElementById('rad1').checked = selectedCircle.bounds.width / 2 === 3;
+                    document.getElementById('rad2').checked = selectedCircle.bounds.width / 2 === 5;
+                    document.getElementById('rad3').checked = selectedCircle.bounds.width / 2 === 7;
+                }
+            } else {
+                let radius;
+                if (currentIndex !== 0) {
+                    radius = parseInt(document.getElementById('radiusRange').value, 10);
+                } else {
+                    radius = parseInt(document.querySelector('input[name="diseaseAnnotation"]:checked').value, 10);
+                }
+                let circle = drawCircle(event.point, radius);
+                project.activeLayer.addChild(circle);
+                annotationHistory.push(circle);
+                if (currentIndex !== 0) selectedCircle = circle;
+            }
+        };
+    };
+
+    function submitForm() {
+        let data = {
+            disease_type: diseases[currentIndex],
+            comment: document.getElementById('commentBox').style.display === 'block' ? document.getElementById('commentTextbox').value : "",
+            annotations: []
+        };
+
+        annotationHistory.forEach(circle => {
+            data.annotations.push({
+                x: circle.position.x,
+                y: circle.position.y,
+                radius: circle.bounds.width / 2
+            });
+        });
+
+        console.log(data);
+
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", "{{request.path}}");
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+        xhr.send(JSON.stringify(data));
+
+        //verify response
+        xhr.onload = function() {
+            if (xhr.status == 200) {
+                console.log("success");
+                annotationHistory.length = 0; // Clear the annotationHistory array
+                paper.view.draw(); // Refresh the view
+            } else {
+                console.log("error " + this.status);
+            }
+        };
+    }
+</script>
+
+{% endblock content%}

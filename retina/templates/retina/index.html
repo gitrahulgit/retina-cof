@@ -1,0 +1,13 @@
+{% extends "users/base.html"%}
+{%block content%}
+    <div class="container">
+        <h1>Search for a Patient</h1>
+        <form action="" method="post">
+            {% csrf_token %}
+            <label for="patient_id">Put Patient ID:</label>
+            <input type="text" id="patient_id" name="patient_id" required>
+            <button type="submit">Search</button>
+        </form>
+    </div> 
+{% endblock content %}
+
