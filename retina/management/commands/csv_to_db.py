@@ -1,6 +1,7 @@
 import csv
 from typing import Any
 from django.db import transaction
+from django.conf import settings
 from retina.models import PatientImage, PatientInfo
 from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
@@ -8,13 +9,11 @@ from django.core.management.base import BaseCommand, CommandError
 class Command(BaseCommand):
     def handle(self, *args: Any, **options: Any) -> str | None:
         # Path to your CSV file
-        csv_file_path = '/home/rahul/Downloads/image_ids_v2_3entries.csv'
-
         PatientInfo.objects.all().delete()
         PatientImage.objects.all().delete()
 
         # Read the CSV file and populate data
-        with Path(csv_file_path).open("r") as csvfile:
+        with Path(settings.BASE_DIR, "image_ids_v2.csv").open("r") as csvfile:
             reader = csv.DictReader(csvfile)
 
             pinfo = {0: 0, 1: 0}
