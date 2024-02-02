@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 
 class PatientInfo(models.Model):
     pat_id = models.CharField(max_length=20, primary_key=True)
+    processed = models.BooleanField(default=False)
 
     def __str__(self):
         return self.pat_id  

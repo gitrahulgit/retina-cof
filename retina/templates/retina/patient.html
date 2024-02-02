@@ -4,7 +4,7 @@
 
         <h1>Patient ID: {{ patient_img.patient_id }}</h1>
         <h1>Patient Eye: {{patient_img.img_type}}</h1>
-        <h4>Processed: {{ processed }}/2917</h4>
+        <h4>Processed: {{ processed }}/{{total}}</h4>
 
         <canvas id="myCanvas" width="750" height="750"  style="border:3px solid #000;"></canvas>
 
@@ -35,8 +35,8 @@
                 <textarea id="commentTextbox" class="mb-7" rows="4" placeholder="Enter comments here...">{{ comment.comment }}</textarea>
             </div>
             
-            <button type="button" class="btn btn-primary" id="nextDiseaseBtn" onclick="nextDisease();">Go to next disease</button>
-            <input type="button" class="btn btn-success" value="Save to DataBase" onclick="submitForm();">
+            <button type="button" class="btn btn-primary" id="nextDiseaseBtn" onclick="nextDisease();">Save & Next</button>
+            {% comment %} <input type="button" class="btn btn-success" value="Save to DataBase" onclick="submitForm();"> {% endcomment %}
             <input type="button" class="btn btn-warning" value="Undo" onclick="undoAnnotation();">
             <input type="button" class="btn btn-danger" value="Reset" onclick="resetAnnotations();">
         </form>
@@ -73,7 +73,7 @@
         submitForm(); // Submit the current form before moving on to the next disease
 
         if (currentIndex===3) {
-            window.location.href = "{% url 'nextpat' patient_id=patient_img.patient_id.pat_id %}"; // Redirect to the home page if we're done with all diseases
+            window.location.href = "{% url 'nextpat' %}"; // Redirect to the home page if we're done with all diseases
             
         }
         currentIndex = (currentIndex + 1) % diseases.length; // Cycle through diseases
@@ -90,34 +90,6 @@
             project.activeLayer.addChild(dbCircle);
         }
     }
-
-    {% comment %} function putDot(position) {
-        // This function now assumes it's only called for "MA", which is currentIndex === 0
-        var circle = new Path.Circle({
-            center: position,
-            radius: selectedRadius,
-            fillColor: 'black', // Feel free to change the color
-        });
-    } {% endcomment %}
-
-    {% comment %} if (currentIndex === 0) { // Only for "MA"
-        tool.onMouseDown = function(event) {
-            putDot(event.point);
-        }
-    } {% endcomment %}
-    
-    // Update the radius based on radio button selection
-    //var radios = document.getElementsByName('diseaseAnnotation');
-    {% comment %} radios.forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            if (radio.checked) {
-                selectedRadius = parseInt(radio.value, 10);
-            }
-        });
-    }); {% endcomment %}
-
-     // Initialize the selected radius from the currently checked radio
-     //updateSelectedRadius(); // Assumes this function is defined to update selectedRadius
 
     function drawCircle(position, radius) {
         var path = new Path.Circle({

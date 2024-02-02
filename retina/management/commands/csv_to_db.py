@@ -8,7 +8,7 @@ from django.core.management.base import BaseCommand, CommandError
 class Command(BaseCommand):
     def handle(self, *args: Any, **options: Any) -> str | None:
         # Path to your CSV file
-        csv_file_path = '/home/rahul/Downloads/image_ids_v2.csv'
+        csv_file_path = '/home/rahul/Downloads/image_ids_v2_3entries.csv'
 
         PatientInfo.objects.all().delete()
         PatientImage.objects.all().delete()
@@ -22,7 +22,7 @@ class Command(BaseCommand):
             with transaction.atomic():
                 for row in reader:
                     if len(row) >= 2:
-                        imagelink = row["Modified Link"]
+                        imagelink = row["link"]
                         patientid = row["Patient_ID_new"]
                         imagetype = row["Patient_Eye"]
 

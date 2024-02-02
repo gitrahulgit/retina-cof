@@ -15,15 +15,20 @@ from datetime import datetime
 
 @login_required
 def index(request):
-    if request.method == "GET":
-        return render(request, 'retina/index.html')
-    elif request.method == "POST":
-        patient = get_object_or_404(PatientInfo, pk=request.POST["patient_id"])
-        return redirect('patient', patient_id=patient.pat_id)
+    return redirect("nextpat")
 
 @login_required
 def patient(request, patient_id):
     image= get_object_or_404(PatientImage, patient_id=patient_id)
+    if image.patient_id.processed:
+        return redirect("nextpat")
+
+    processed = PatientInfo.objects.filter(processed=True).count()
+    total = PatientInfo.objects.all().count()
+
+    if processed == total:
+        return render(request, 'retina/finished.html')
+
     if request.method == "GET":
         disease_type = ["MA", "NVE", "HAM", "HVE"]     
 
@@ -33,8 +38,6 @@ def patient(request, patient_id):
             if annotation.disease_type in my_dict:
                 my_dict[annotation.disease_type].append(annotation.get_coord())
 
-        processed = Annotation.objects.values("patient_image__patient_id__pat_id").distinct().count()
-        total = PatientInfo.objects.all().count()
         context = {
             'patient_img': image,
             'annotations': my_dict,
@@ -54,6 +57,8 @@ def patient(request, patient_id):
                 disease_type=disease_type,
                 defaults={"comment": body.get("comment")}
             )
+            image.patient_id.processed = True
+            image.patient_id.save()
         for annotation in annotations:
             Annotation.objects.update_or_create(
                 patient_image=image, 
@@ -68,14 +73,12 @@ def patient(request, patient_id):
 
 #to iterate
 @login_required
-def next_patient(request, patient_id):
-    patients = list(PatientInfo.objects.all())
-    options = random.sample(patients, 2)
-    if options[0].pat_id == patient_id:
-        next = options[1].pat_id
-    else:
-        next = options[0].pat_id
-    return redirect('patient', patient_id=next)
+def next_patient(request):
+    patients = PatientInfo.objects.filter(processed=False)
+    if patients.count() == 0:
+        return render(request, 'retina/finished.html')
+    next = random.choice(list(patients))
+    return redirect('patient', patient_id=next.pat_id)
 
 @login_required
 def export_data_to_excel(request):

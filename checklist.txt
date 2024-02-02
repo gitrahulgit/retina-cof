@@ -1,0 +1,6 @@
+1. Make PA changes locally
+2. Verify new function locally
+3. git add, git commit, git push
+4. On PA, git restore ., git pull
+5. Deploy
+6. Verify DB, create users, insert 3 entries
