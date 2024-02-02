@@ -12,6 +12,6 @@ class AnnotationResource(resources.ModelResource):
         export_order = ('patient_image', 'disease_type', 'x_cord', 'y_cord', 'radius', 'comment')
 
     def dehydrate_comment(self, annotation):
-        related_comment = Comment.objects.filter(patient_image=annotation.patient_image, disease_type="HVE")
-        if related_comment.exists():
+        related_comment = Comment.objects.filter(patient_image=annotation.patient_image)
+        if related_comment.exists() and annotation.disease_type == "HVE":
             return related_comment.first().comment
