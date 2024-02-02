@@ -13,5 +13,5 @@ class AnnotationResource(resources.ModelResource):
 
     def dehydrate_comment(self, annotation):
         related_comment = Comment.objects.filter(patient_image=annotation.patient_image)
-        if related_comment.exists() and annotation.disease_type == "HVE":
+        if related_comment.exists():
             return related_comment.first().comment
