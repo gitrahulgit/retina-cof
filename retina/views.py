@@ -1,3 +1,4 @@
+import io
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count
 from django.http import HttpResponse
@@ -9,6 +10,7 @@ from django.contrib import messages
 from .resources import AnnotationResource
 from django.urls import reverse
 from datetime import datetime
+import pandas as pd
 
 #from django.views.generic import ListView, FormView
 #from .admin import AnnotationResource
@@ -80,15 +82,63 @@ def next_patient(request):
     next = random.choice(list(patients))
     return redirect('patient', patient_id=next.pat_id)
 
+# @login_required
+# def export_data_to_excel(request):
+#     resource = AnnotationResource()
+#     dataset = resource.export()
+
+#     current_time = datetime.now()
+#     formatted_date = current_time.strftime("%d-%m-%Y") 
+#     filename = f"Annotated_Data_{formatted_date}.xlsx"
+
+#     response = HttpResponse(dataset.xlsx, content_type='tapplication/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+#     response['Content-Disposition'] =  f'attachment; filename="{filename}"'
+#     return response
+
+
 @login_required
 def export_data_to_excel(request):
-    resource = AnnotationResource()
-    dataset = resource.export()
+    annotations = Annotation.objects.all()
+    comments = Comment.objects.all()
+
+    data_comments = {
+        "patient_id": [],
+        "disease_type": [],
+        "comment": [],
+    }
+    data_ann = {
+        "patient_id": [],
+        "disease_type": [],
+        "x_cord": [],
+        "y_cord": [],
+        "radius": [],
+    }
+    for annotation in annotations:
+        data_ann["patient_id"].append(annotation.patient_image.patient_id.pat_id)
+        data_ann["disease_type"].append(annotation.disease_type)
+        data_ann["x_cord"].append(annotation.x_cord)
+        data_ann["y_cord"].append(annotation.y_cord)
+        data_ann["radius"].append(annotation.radius)
+
+    for comment in comments:
+        data_comments["patient_id"].append(comment.patient_image.patient_id.pat_id)
+        data_comments["disease_type"].append(comment.disease_type)
+        data_comments["comment"].append(comment.comment)
+
+    df_ann = pd.DataFrame(data_ann)
+    df_comments = pd.DataFrame(data_comments)
+
+    df = pd.merge(df_ann, df_comments, on=["patient_id", "disease_type"], how="left")
 
     current_time = datetime.now()
     formatted_date = current_time.strftime("%d-%m-%Y") 
     filename = f"Annotated_Data_{formatted_date}.xlsx"
-
-    response = HttpResponse(dataset.xlsx, content_type='tapplication/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] =  f'attachment; filename="{filename}"'
+    
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False)
+    writer.save()
+    xlsx_data = output.getvalue()
+    response = HttpResponse(xlsx_data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response

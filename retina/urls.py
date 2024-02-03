@@ -5,8 +5,9 @@ from .views import export_data_to_excel
 #app_name = "retina"
 
 urlpatterns = [
-    path("", views.index, name="index"),
     path("patient/<str:patient_id>", views.patient, name="patient"),
     path("next", views.next_patient, name="nextpat"),
     path("export/",export_data_to_excel, name="export_data_to_excel"),
+    path("", views.index, name="index"),
+
     ]
