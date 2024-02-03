@@ -11,7 +11,7 @@ from .resources import AnnotationResource
 from django.urls import reverse
 from datetime import datetime
 import pandas as pd
-    
+
 #from django.views.generic import ListView, FormView
 #from .admin import AnnotationResource
 
@@ -137,7 +137,7 @@ def export_data_to_excel(request):
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False)
-    writer.save()
+    writer.close()
     xlsx_data = output.getvalue()
     response = HttpResponse(xlsx_data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
