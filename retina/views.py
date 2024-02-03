@@ -11,7 +11,7 @@ from .resources import AnnotationResource
 from django.urls import reverse
 from datetime import datetime
 import pandas as pd
-
+    
 #from django.views.generic import ListView, FormView
 #from .admin import AnnotationResource
 
@@ -133,7 +133,7 @@ def export_data_to_excel(request):
     current_time = datetime.now()
     formatted_date = current_time.strftime("%d-%m-%Y") 
     filename = f"Annotated_Data_{formatted_date}.xlsx"
-    
+
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False)

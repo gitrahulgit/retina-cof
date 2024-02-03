@@ -6,6 +6,8 @@ class AnnotationResource(resources.ModelResource):
 
     patient_image = fields.Field(column_name='patient_image', attribute='patient_image', widget=widgets.ForeignKeyWidget(PatientImage, 'patient_id'))
     comment = fields.Field(column_name='comment', attribute='comment', widget=widgets.ForeignKeyWidget(Comment, 'patient_image__patient_id'))
+    # get comment for unique patient_image and disease_type
+    
     class Meta:
         model = Annotation
         fields = ('patient_image', 'disease_type', 'x_cord', 'y_cord', 'radius', 'comment')
